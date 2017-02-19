@@ -24,8 +24,8 @@ func New(gamma float64, keys []uint64) *H {
 	for len(keys) > 0 {
 		for _, v := range keys {
 			hash := xorshiftMult64(v)
-			hash32 := uint32(hash) + level*uint32(hash>>32)
-			idx := hash32 % size
+			h1, h2 := uint32(hash), uint32(hash>>32)
+			idx := (h1 ^ rotl(h2, uint32(level))) % size
 
 			if collide.get(idx) == 1 {
 				continue
@@ -43,8 +43,9 @@ func New(gamma float64, keys []uint64) *H {
 		bv := newbv(size)
 		for _, v := range keys {
 			hash := xorshiftMult64(v)
-			hash32 := uint32(hash) + level*uint32(hash>>32)
-			idx := hash32 % size
+			h1, h2 := uint32(hash), uint32(hash>>32)
+			idx := (h1 ^ rotl(h2, uint32(level))) % size
+
 			if collide.get(idx) == 1 {
 				redo = append(redo, v)
 				continue
@@ -87,12 +88,10 @@ func (h *H) computeRanks() {
 func (h *H) Query(k uint64) uint64 {
 
 	hash := xorshiftMult64(k)
-	h1 := uint32(hash)
-	h2 := uint32(hash >> 32)
+	h1, h2 := uint32(hash), uint32(hash>>32)
 
 	for i, bv := range h.b {
-		hash32 := h1 + uint32(i)*h2
-		idx := hash32 % (uint32(len(bv)) * 64)
+		idx := (h1 ^ rotl(h2, uint32(i))) % uint32(len(bv)*64)
 
 		if bv.get(idx) == 0 {
 			continue
@@ -112,6 +111,11 @@ func (h *H) Query(k uint64) uint64 {
 	}
 
 	return 0
+}
+
+
+func rotl(v uint32, r uint32) uint32 {
+	return (v << r) | (v >> (32 - r))
 }
 
 // 64-bit xorshift multiply rng from http://vigna.di.unimi.it/ftp/papers/xorshift.pdf
