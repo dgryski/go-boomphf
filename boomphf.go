@@ -15,8 +15,8 @@ func New(gamma float64, keys []uint64) *H {
 	var level uint32
 
 	size := uint32(gamma * float64(len(keys)))
-	size = (size + 63) / 64 * 64
-	A := make([]uint64, size)
+	size = (size + 63) &^ 63
+	A := newbv(size)
 	collide := newbv(size)
 
 	var redo []uint64
@@ -28,35 +28,37 @@ func New(gamma float64, keys []uint64) *H {
 			idx := hash32 % size
 
 			if collide.get(idx) == 1 {
-				redo = append(redo, v)
 				continue
 			}
 
-			if A[idx] != 0 {
-				redo = append(redo, A[idx])
-				redo = append(redo, v)
-				A[idx] = 0
+			if A.get(idx) == 1 {
+				A.clear(idx)
 				collide.set(idx)
 				continue
 			}
 
-			A[idx] = v
+			A.set(idx)
 		}
 
 		bv := newbv(size)
-		for i, v := range A {
-			if v != 0 {
-				bv.set(uint32(i))
-				A[i] = 0
+		for _, v := range keys {
+			hash := xorshiftMult64(v)
+			hash32 := uint32(hash) + level*uint32(hash>>32)
+			idx := hash32 % size
+			if collide.get(idx) == 1 {
+				redo = append(redo, v)
+				continue
 			}
+
+			bv.set(idx)
 		}
 		h.b = append(h.b, bv)
 
 		keys = redo
 		redo = redo[:0] // tricky, sharing space with `keys`
 		size = uint32(gamma * float64(len(keys)))
-		size = (size + 63) / 64 * 64
-		A = A[:size]
+		size = (size + 63) &^ 63
+		A.reset()
 		collide.reset()
 		level++
 	}
@@ -138,6 +140,11 @@ func (b bitvector) get(bit uint32) uint {
 // set bit 'bit' in the bitvector d
 func (b bitvector) set(bit uint32) {
 	b[bit/64] |= (1 << (bit % 64))
+}
+
+// set bit 'bit' in the bitvector d
+func (b bitvector) clear(bit uint32) {
+	b[bit/64] &= ^(1 << (bit % 64))
 }
 
 func (b bitvector) reset() {
