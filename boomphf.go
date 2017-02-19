@@ -5,7 +5,7 @@ package boomphf
 
 type H struct {
 	b     []bitvector
-	ranks []uint64
+	ranks [][]uint64
 }
 
 func New(gamma float64, keys []uint64) *H {
@@ -69,10 +69,16 @@ func New(gamma float64, keys []uint64) *H {
 func (h *H) computeRanks() {
 	var pop uint64
 	for _, bv := range h.b {
-		h.ranks = append(h.ranks, pop)
-		for _, v := range bv {
+
+		r := make([]uint64, 0, 1+(len(bv)/8))
+
+		for i, v := range bv {
+			if i%8 == 0 {
+				r = append(r, pop)
+			}
 			pop += popcnt(v)
 		}
+		h.ranks = append(h.ranks, r)
 	}
 }
 
@@ -90,19 +96,15 @@ func (h *H) Query(k uint64) uint64 {
 			continue
 		}
 
-		rank := h.ranks[i]
+		rank := h.ranks[i][idx/512]
 
-		for j := uint32(0); j < idx/64; j++ {
+		for j := (idx / 64) &^ 7; j < idx/64; j++ {
 			rank += popcnt(bv[j])
 		}
 
 		w := bv[idx/64]
 
-		idx %= 64
-
-		for j := uint32(0); j < idx; j++ {
-			rank += (w >> j) & 1
-		}
+		rank += popcnt(w << (64 - (idx % 64)))
 
 		return rank + 1
 	}
