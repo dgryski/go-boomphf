@@ -32,7 +32,6 @@ func New(gamma float64, keys []uint64) *H {
 			}
 
 			if A.get(idx) == 1 {
-				A.clear(idx)
 				collide.set(idx)
 				continue
 			}
