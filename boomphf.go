@@ -112,6 +112,17 @@ func (h *H) Query(k uint64) uint64 {
 	return 0
 }
 
+// Size returns the size in bytes
+func (h *H) Size() int {
+	var size int
+	for _, v := range h.b {
+		size += len(v) * 8
+	}
+	for _, v := range h.ranks {
+		size += len(v) * 8
+	}
+	return size
+}
 
 func rotl(v uint32, r uint32) uint32 {
 	return (v << r) | (v >> (32 - r))
