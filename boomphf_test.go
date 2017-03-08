@@ -2,40 +2,50 @@ package boomphf
 
 import (
 	"math/rand"
-	"sort"
 	"testing"
+	"time"
+
+	"github.com/dgryski/go-radixsort"
+	"github.com/dustin/go-humanize"
 )
 
 func testKeys(t *testing.T, n int) {
 
 	rand.Seed(0)
 
-	var k []uint64
-
+	t0 := time.Now()
+	t.Logf("generating keys")
+	k := make([]uint64, 0, n)
 	for i := 1; i <= n; i++ {
 		k = append(k, uint64(i))
 	}
+	t.Logf("generated %d keys in %v", n, time.Since(t0))
 
-	h := New(3, k)
+	t0 = time.Now()
+	h := New(2, k)
 
-	t.Logf("h=%b %+v", h.b, h.ranks)
+	t.Logf("construct(%v)=%v", n, time.Since(t0))
+	sz := h.Size()
+	t.Logf("size=%v (%.2f bits per item)", humanize.Bytes(uint64(sz)), float64(8*sz)/float64(n))
 
-	var got []int
+	got := make([]uint64, 0, n)
 
+	t0 = time.Now()
 	for _, v := range k {
 		r := h.Query(v)
-		t.Logf("lookup(%v)=%v", v, r)
-		got = append(got, int(r))
+		got = append(got, r)
 	}
+	took := time.Since(t0)
+	t.Logf("query(%v)=%v, %v per item", n, took, took/time.Duration(n))
 
-	sort.Ints(got)
+	radixsort.Uint64s(got)
 
 	for i, v := range got {
-		if v != (i + 1) {
+		if v != uint64(i+1) {
 			t.Fatalf("failed: v=%v i+1=%v", v, i+1)
 		}
 	}
 
 }
 
-func TestKeys(t *testing.T) { testKeys(t, 1000) }
+func TestKeys(t *testing.T) { testKeys(t, 1e7) }
