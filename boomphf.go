@@ -1,13 +1,19 @@
+// Package boomphf is a fast perfect hash function for massive key sets
+/*
+   https://arxiv.org/abs/1702.03154
+*/
 package boomphf
 
-// Fast and scalable minimal perfect hashing for massive key sets
-// https://arxiv.org/abs/1702.03154
-
+// H is hash function data
 type H struct {
 	b     []bitvector
 	ranks [][]uint64
 }
 
+// Gamma is  good default value for controlling space vs. construction speed
+const Gamma = 2
+
+// New contructs a perfect hash function for the keys.  The gamma value controls the space used.
 func New(gamma float64, keys []uint64) *H {
 
 	var h H
@@ -25,7 +31,7 @@ func New(gamma float64, keys []uint64) *H {
 		for _, v := range keys {
 			hash := xorshiftMult64(v)
 			h1, h2 := uint32(hash), uint32(hash>>32)
-			idx := (h1 ^ rotl(h2, uint32(level))) % size
+			idx := (h1 ^ rotl(h2, level)) % size
 
 			if collide.get(idx) == 1 {
 				continue
@@ -43,7 +49,7 @@ func New(gamma float64, keys []uint64) *H {
 		for _, v := range keys {
 			hash := xorshiftMult64(v)
 			h1, h2 := uint32(hash), uint32(hash>>32)
-			idx := (h1 ^ rotl(h2, uint32(level))) % size
+			idx := (h1 ^ rotl(h2, level)) % size
 
 			if collide.get(idx) == 1 {
 				redo = append(redo, v)
@@ -84,6 +90,7 @@ func (h *H) computeRanks() {
 	}
 }
 
+// Query returns the index of the key
 func (h *H) Query(k uint64) uint64 {
 
 	hash := xorshiftMult64(k)
@@ -154,11 +161,6 @@ func (b bitvector) get(bit uint32) uint {
 // set bit 'bit' in the bitvector d
 func (b bitvector) set(bit uint32) {
 	b[bit/64] |= (1 << (bit % 64))
-}
-
-// set bit 'bit' in the bitvector d
-func (b bitvector) clear(bit uint32) {
-	b[bit/64] &= ^(1 << (bit % 64))
 }
 
 func (b bitvector) reset() {
