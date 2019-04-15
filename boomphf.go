@@ -4,6 +4,8 @@
 */
 package boomphf
 
+import "math/bits"
+
 // H is hash function data
 type H struct {
 	b     []bitvector
@@ -84,7 +86,7 @@ func (h *H) computeRanks() {
 			if i%8 == 0 {
 				r = append(r, pop)
 			}
-			pop += popcnt(v)
+			pop += uint64(bits.OnesCount64(v))
 		}
 		h.ranks = append(h.ranks, r)
 	}
@@ -106,12 +108,12 @@ func (h *H) Query(k uint64) uint64 {
 		rank := h.ranks[i][idx/512]
 
 		for j := (idx / 64) &^ 7; j < idx/64; j++ {
-			rank += popcnt(bv[j])
+			rank += uint64(bits.OnesCount64(bv[j]))
 		}
 
 		w := bv[idx/64]
 
-		rank += popcnt(w << (64 - (idx % 64)))
+		rank += uint64(bits.OnesCount64(w << (64 - (idx % 64))))
 
 		return rank + 1
 	}
@@ -167,9 +169,4 @@ func (b bitvector) reset() {
 	for i := range b {
 		b[i] = 0
 	}
-}
-
-
-func popcnt(x uint64) uint64 {
-	return uint64(bits.OnesCount64(x));
 }
